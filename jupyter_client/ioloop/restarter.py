@@ -5,15 +5,13 @@ restarts the kernel if it dies.
 """
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
-import asyncio
 import time
 import warnings
+from typing import Any
 
 from traitlets import Instance
-from zmq.eventloop import ioloop
 
-from jupyter_client.restarter import KernelRestarter
-from jupyter_client.utils import run_sync
+from ..restarter import KernelRestarter
 
 
 class IOLoopKernelRestarter(KernelRestarter):
@@ -21,30 +19,30 @@ class IOLoopKernelRestarter(KernelRestarter):
 
     loop = Instance("tornado.ioloop.IOLoop")
 
-    def _loop_default(self):
+    def _loop_default(self) -> Any:
         warnings.warn(
             "IOLoopKernelRestarter.loop is deprecated in jupyter-client 5.2",
             DeprecationWarning,
             stacklevel=4,
         )
+        from tornado import ioloop
+
         return ioloop.IOLoop.current()
 
     _pcallback = None
 
-    def start(self):
+    def start(self) -> None:
         """Start the polling of the kernel."""
         if self._pcallback is None:
-            if asyncio.iscoroutinefunction(self.poll):
-                cb = run_sync(self.poll)
-            else:
-                cb = self.poll
-            self._pcallback = ioloop.PeriodicCallback(
-                cb,
+            from tornado.ioloop import PeriodicCallback
+
+            self._pcallback = PeriodicCallback(
+                self.poll,
                 1000 * self.time_to_dead,
             )
             self._pcallback.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the kernel polling."""
         if self._pcallback is not None:
             self._pcallback.stop()
@@ -52,7 +50,10 @@ class IOLoopKernelRestarter(KernelRestarter):
 
 
 class AsyncIOLoopKernelRestarter(IOLoopKernelRestarter):
-    async def poll(self):
+    """An async io loop kernel restarter."""
+
+    async def poll(self) -> None:  # type:ignore[override]
+        """Poll the kernel."""
         if self.debug:
             self.log.debug("Polling kernel...")
         is_alive = await self.kernel_manager.is_alive()

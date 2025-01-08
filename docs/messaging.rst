@@ -21,7 +21,7 @@ Versioning
 
 The Jupyter message specification is versioned independently of the packages
 that use it.
-The current version of the specification is 5.3.
+The current version of the specification is 5.4.
 
 .. note::
    *New in* and *Changed in* messages in this document refer to versions of the
@@ -96,8 +96,8 @@ A message is composed of five dictionaries.
 Message Header
 --------------
 
-The message `header` contains information about the message,
-such as unique identifiers for the originating session and the actual message id,
+The message ``header`` contains information about the message,
+such as unique identifiers for the originating session and the actual message ID,
 the type of message, the version of the Jupyter protocol,
 and the date the message was created.
 In addition, there is a username field, e.g. for the process that generated the
@@ -109,35 +109,42 @@ so that frontends can label the various messages in a meaningful way.
 .. sourcecode:: python
 
     {
-        'msg_id' : str, # typically UUID, must be unique per message
-        'session' : str, # typically UUID, should be unique per session
-        'username' : str,
+        "msg_id": str,  # typically UUID, must be unique per message
+        "session": str,  # typically UUID, should be unique per session
+        "username": str,
         # ISO 8601 timestamp for when the message is created
-        'date': str,
+        "date": str,
         # All recognized message type strings are listed below.
-        'msg_type' : str,
+        "msg_type": str,
         # the message protocol version
-        'version' : '5.0',
+        "version": "5.0",
+        # Optional subshell_id
+        "subshell_id": str | None,
     }
 
 .. note::
 
-    The ``session`` id in a message header identifies a unique entity with state,
+    The ``session`` ID in a message header identifies a unique entity with state,
     such as a kernel process or client process.
 
-    A client session id, in message headers from a client, should be unique among
+    A client session ID, in message headers from a client, should be unique among
     all clients connected to a kernel. When a client reconnects to a kernel, it
-    should use the same client session id in its message headers. When a client
-    restarts, it should generate a new client session id.
+    should use the same client session ID in its message headers. When a client
+    restarts, it should generate a new client session ID.
 
-    A kernel session id, in message headers from a kernel, should identify a
-    particular kernel process. If a kernel is restarted, the kernel session id
+    A kernel session ID, in message headers from a kernel, should identify a
+    particular kernel process. If a kernel is restarted, the kernel session ID
     should be regenerated.
 
-    The session id in a message header can be used to identify the sending entity.
+    The session ID in a message header can be used to identify the sending entity.
     For example, if a client disconnects and reconnects to a kernel, and messages
-    from the kernel have a different kernel session id than prior to the disconnect,
+    from the kernel have a different kernel session ID than prior to the disconnect,
     the client should assume that the kernel was restarted.
+
+    The ``subshell_id`` is only used in shell messages of kernels that support
+    subshells (:ref:`kernel_subshells`). If it is not included or is ``None`` then the
+    shell message is handled by the parent subshell (main shell), if it is a string
+    subshell ID then it is handled by the subshell with that ID.
 
 .. versionchanged:: 5.0
 
@@ -149,6 +156,10 @@ so that frontends can label the various messages in a meaningful way.
     but it has always been in the canonical implementation,
     so implementers are strongly encouraged to include it.
     It will be mandatory in 5.1.
+
+.. versionchanged:: 5.5
+
+    ``subshell_id`` added to the header.
 
 Parent header
 -------------
@@ -174,7 +185,7 @@ such as outputs to a cell.
 Metadata
 --------
 
-The `metadata` dict contains information about the message that is not part of the content.
+The ``metadata`` dict contains information about the message that is not part of the content.
 This is not often used, but can be an extra location to store information about
 requests and replies,
 such as extensions adding information about request or execution context.
@@ -271,15 +282,15 @@ Every message is serialized to a sequence of at least six blobs of bytes:
 .. sourcecode:: python
 
     [
-      b'u-u-i-d',         # zmq identity(ies)
-      b'<IDS|MSG>',       # delimiter
-      b'baddad42',        # HMAC signature
-      b'{header}',        # serialized header dict
-      b'{parent_header}', # serialized parent header dict
-      b'{metadata}',      # serialized metadata dict
-      b'{content}',       # serialized content dict
-      b'\xf0\x9f\x90\xb1' # extra raw data buffer(s)
-      ...
+        b"u-u-i-d",  # zmq identity(ies)
+        b"<IDS|MSG>",  # delimiter
+        b"baddad42",  # HMAC signature
+        b"{header}",  # serialized header dict
+        b"{parent_header}",  # serialized parent header dict
+        b"{metadata}",  # serialized metadata dict
+        b"{content}",  # serialized content dict
+        b"\xf0\x9f\x90\xb1"  # extra raw data buffer(s)
+        # ...
     ]
 
 The front of the message is the ZeroMQ routing prefix,
@@ -304,7 +315,7 @@ By default, the hashing function used for computing these signatures is sha256.
 .. note::
 
     To disable authentication and signature checking,
-    set the `key` field of a connection file to an empty string.
+    set the ``key`` field of a connection file to an empty string.
 
 The signature is the HMAC hex digest of the concatenation of:
 
@@ -403,7 +414,7 @@ All reply messages have a ``'status'`` field, which will have one of the followi
 
 - ``status='abort'``: This is the same as ``status='error'``
   but with no information about the error.
-  No fields should be present other that `status`.
+  No fields should be present other that ``status``.
 
 As a special case, ``execute_reply`` messages (see :ref:`execution_results`)
 have an ``execution_count`` field regardless of their status.
@@ -565,12 +576,12 @@ and are not included in notebook documents.
 .. sourcecode:: python
 
     {
-      "source": "page",
-      # mime-bundle of data to display in the pager.
-      # Must include text/plain.
-      "data": mimebundle,
-      # line offset to start from
-      "start": int,
+        "source": "page",
+        # mime-bundle of data to display in the pager.
+        # Must include text/plain.
+        "data": mimebundle,
+        # line offset to start from
+        "start": int,
     }
 
 **set_next_input**: create a new output
@@ -582,24 +593,24 @@ The main example being ``%load``.
 .. sourcecode:: python
 
     {
-      "source": "set_next_input",
-      # the text contents of the cell to create
-      "text": "some cell content",
-      # If true, replace the current cell in document UIs instead of inserting
-      # a cell. Ignored in console UIs.
-      "replace": bool,
+        "source": "set_next_input",
+        # the text contents of the cell to create
+        "text": "some cell content",
+        # If true, replace the current cell in document UIs instead of inserting
+        # a cell. Ignored in console UIs.
+        "replace": bool,
     }
 
 **edit_magic**: open a file for editing.
 
-Triggered by `%edit`. Only the QtConsole currently supports edit payloads.
+Triggered by ``%edit``. Only the QtConsole currently supports edit payloads.
 
 .. sourcecode:: python
 
     {
-      "source": "edit_magic",
-      "filename": "/path/to/file.py", # the file to edit
-      "line_number": int, # the line number to start with
+        "source": "edit_magic",
+        "filename": "/path/to/file.py",  # the file to edit
+        "line_number": int,  # the line number to start with
     }
 
 **ask_exit**: instruct the frontend to prompt the user for exit
@@ -610,9 +621,9 @@ Only for console frontends.
 .. sourcecode:: python
 
     {
-      "source": "ask_exit",
-      # whether the kernel should be left running, only closing the client
-      "keepkernel": bool,
+        "source": "ask_exit",
+        # whether the kernel should be left running, only closing the client
+        "keepkernel": bool,
     }
 
 
@@ -913,7 +924,7 @@ Message type: ``comm_info_reply``::
         # 'ok' if the request succeeded or 'error', with error information as in all other replies.
         'status' : 'ok',
 
-        # A dictionary of the comms, indexed by uuids.
+        # A dictionary of the comms, indexed by UUIDs.
         'comms': {
             comm_id: {
                 'target_name': str,
@@ -993,11 +1004,12 @@ Message type: ``kernel_info_reply``::
         },
 
         # A banner of information about the kernel,
-        # which may be desplayed in console environments.
+        # which may be displayed in console environments.
         'banner': str,
 
         # A boolean flag which tells if the kernel supports debugging in the notebook.
-        # Default is False
+        # Default is False.
+        # Deprecated as replaced by 'supported_features'=['debugger'] (see below).
         'debugger': bool,
 
         # Optional: A list of dictionaries, each with keys 'text' and 'url'.
@@ -1005,6 +1017,11 @@ Message type: ``kernel_info_reply``::
         'help_links': [
             {'text': str, 'url': str}
         ],
+
+        # Optional: A list of optional features such as 'debugger' and
+        # 'kernel subshells'. Introduced by Jupyter Enhancement Proposal 92
+        # https://github.com/jupyter/enhancement-proposals/pull/92
+        'supported_features': [str]
     }
 
 Refer to the lists of available `Pygments lexers <http://pygments.org/docs/lexers/>`_
@@ -1031,6 +1048,10 @@ and `codemirror modes <http://codemirror.net/mode/index.html>`_ for those fields
 
     ``language`` moved to ``language_info.name``
 
+.. versionchanged:: 5.5
+
+    ``supported_features`` added and ``debugger`` deprecated.
+
 Messages on the Control (ROUTER/DEALER) channel
 ===============================================
 
@@ -1049,9 +1070,18 @@ multiple cases:
   IPythonQt client) to force a kernel restart to get a clean kernel without
   losing client-side state like history or inlined figures.
 
+Implementation recommendation for starting kernels: A restart should optimally
+preserve as many resources outside the kernel as possible (e.g. only restart the
+kernel and its subprocesses and not any parent processes). That is, ideally a
+restart should be "in-place". For local kernels, there is typically no parent
+process so a "hard" restart and an in-place restart are identical whereas for
+remote kernels this is not generally the same. As an example, if a remote kernel
+is run in a container, during an in-place restart the container may be kept
+running and a new kernel process within it would be started.
+
 The client sends a shutdown request to the kernel, and once it receives the
 reply message (which is otherwise empty), it can assume that the kernel has
-completed shutdown safely.  The request is sent on the `control` channel.
+completed shutdown safely.  The request is sent on the ``control`` channel.
 
 Upon their own shutdown, client applications will typically execute a last
 minute sanity check and forcefully terminate any kernel that is still alive, to
@@ -1090,8 +1120,8 @@ Kernel interrupt
 In case a kernel can not catch operating system interrupt signals (e.g. the used
 runtime handles signals and does not allow a user program to define a callback),
 a kernel can choose to be notified using a message instead. For this to work,
-the kernels kernelspec must set `interrupt_mode` to ``message``. An interruption
-will then result in the following message on the `control` channel:
+the kernels kernelspec must set ``interrupt_mode`` to ``message``. An interruption
+will then result in the following message on the ``control`` channel:
 
 Message type: ``interrupt_request``::
 
@@ -1121,9 +1151,11 @@ Message type: ``debug_reply``::
 
     content = {}
 
-The ``content`` dicts of the `debug_request` and `debug_reply` messages respectively follow the specification of the `Request` and `Response` messages from the `Debug Adapter Protocol (DAP) <https://microsoft.github.io/debug-adapter-protocol/>`_ as of version 1.39 or later.
+The ``content`` dicts of the ``debug_request`` and ``debug_reply`` messages respectively follow the
+specification of the ``Request`` and ``Response`` messages from the
+`Debug Adapter Protocol (DAP) <https://microsoft.github.io/debug-adapter-protocol/>`_ as of version 1.39 or later.
 
-Debug requests and replies are sent over the `control` channel to prevent
+Debug requests and replies are sent over the ``control`` channel to prevent
 queuing behind execution requests.
 
 Additions to the DAP
@@ -1131,15 +1163,20 @@ Additions to the DAP
 
 The Jupyter debugger protocol makes several additions to the DAP:
 
-- the `dumpCell` request and response messages
-- the `debugInfo` request and response messages
-- the `inspectVariables` request and response messages
+- the `dumpCell`_ request and response messages
+- the `debugInfo`_ request and response messages
+- the `inspectVariables`_ request and response messages
+- the `richInspectVariables`_ request and response messages
+- the `copyToGlobals`_ request and response messages
+
+dumpCell
+########
 
 In order to support the debugging of notebook cells and of Jupyter consoles,
 which are not based on source files, we need a message to submit code to the
 debugger to which breakpoints can be added.
 
-  Content of the `dumpCell` request::
+  Content of the ``dumpCell`` request::
 
      {
          'type' : 'request',
@@ -1149,7 +1186,7 @@ debugger to which breakpoints can be added.
          }
      }
 
-  Content of the `dumpCell` response::
+  Content of the ``dumpCell`` response::
 
      {
           'type' : 'response',
@@ -1159,19 +1196,22 @@ debugger to which breakpoints can be added.
           }
      }
 
+debugInfo
+#########
+
 In order to support page reloading, or a client connecting at a later stage,
 Jupyter kernels must store the state of the debugger (such as breakpoints,
-whether the debugger is currently stopped). The `debugInfo` request is a DAP
-`Request` with no extra argument.
+whether the debugger is currently stopped). The ``debugInfo`` request is a DAP
+``Request`` with no extra argument.
 
-  Content of the `debugInfo` request::
+  Content of the ``debugInfo`` request::
 
       {
           'type' : 'request',
           'command' : 'debugInfo'
       }
 
-  Content of the `debugInfo` response::
+  Content of the ``debugInfo`` response::
 
       {
           'type' : 'response',
@@ -1194,20 +1234,23 @@ whether the debugger is currently stopped). The `debugInfo` request is a DAP
           }
       }
 
-  The `source_breakpoint` schema is specified by the Debug Adapter Protocol.
+  The ``source_breakpoint`` schema is specified by the Debug Adapter Protocol.
 
-The `inspectVariables` is meant to retrieve the values of all the variables
-that have been defined in the kernel. It is a DAP `Request` with no extra
+inspectVariables
+################
+
+The ``inspectVariables`` is meant to retrieve the values of all the variables
+that have been defined in the kernel. It is a DAP ``Request`` with no extra
 argument.
 
-  Content of the `inspectVariables` request::
+  Content of the ``inspectVariables`` request::
 
       {
           'type' : 'request',
           'command' : 'inspectVariables'
       }
 
-  Content of the `inspectVariables` response::
+  Content of the ``inspectVariables`` response::
 
       {
           'type' : 'response',
@@ -1223,6 +1266,9 @@ argument.
               ]
           }
       }
+
+richInspectVariables
+####################
 
 The ``richInspectVariables`` request allows to get the rich representation of a
 variable that has been defined in the kernel.
@@ -1245,11 +1291,126 @@ variable that has been defined in the kernel.
           'type' : 'response',
           'success' : bool,
           'body' : {
-              # Dictionary of rich reprensentations of the variable
+              # Dictionary of rich representations of the variable
               'data' : dict,
               'metadata' : dict
           }
       }
+
+copyToGlobals
+#############
+
+The ``copyToGlobals`` request allows to copy a variable from the local variable panel
+of the debugger to the ``global`` scope to inspect it after debug session.
+
+  Content of the ``copyToGlobals`` request::
+
+    {
+        'type': 'request',
+        'command': 'copyToGlobals',
+        'arguments': {
+            # the variable to copy from the frame corresponding to `srcFrameId`
+            'srcVariableName': str,
+            'srcFrameId': int,
+            # the copied variable name in the global scope
+            'dstVariableName': str
+        }
+    }
+
+  Content of the ``copyToGlobals`` response::
+
+    {
+        'type': 'response',
+        'success': bool,
+        'command': 'setExpression',
+        'body': {
+            # string representation of the copied variable
+            'value': str,
+            # type of the copied variable
+            'type': str,
+            'variablesReference': int
+        }
+    }
+
+.. versionadded:: 5.5
+
+.. _kernel_subshells:
+
+Kernel subshells
+----------------
+
+Kernel subshells are separate threads of execution within the same kernel process that
+were introduced by
+`Jupyter Enhancement Proposal 91 <https://github.com/jupyter/enhancement-proposals/pull/91>`_.
+Kernels supporting subshells must include ``'kernel subshells'`` in ``'supported_features'``
+in :ref:`kernel info <msging_kernel_info>` reply messages.
+
+Create subshell
+~~~~~~~~~~~~~~~
+
+In a kernel that supports subshells, this creates a new subshell (running in a separate thread)
+and returns its unique ID. In a kernel that does not support subshells an error is logged and
+no reply is sent.
+
+Message type: ``create_subshell_request``::
+
+    content = {
+    }
+
+Message type: ``create_subshell_reply``::
+
+    content = {
+        # 'ok' if the request succeeded or 'error', with error information as in all other replies.
+        'status' : 'ok',
+
+        # The ID of the subshell, unique within the kernel.
+        'subshell_id': str,
+    }
+
+.. versionadded:: 5.5
+
+Delete subshell
+~~~~~~~~~~~~~~~
+
+In a kernel that supports subshells, this deletes a subshell identified by its unique ID.
+In a kernel that does not support subshells an error is logged and no reply is sent.
+
+Message type: ``delete_subshell_request``::
+
+    content = {
+        # The ID of the subshell.
+        'subshell_id': str
+    }
+
+Message type: ``delete_subshell_reply``::
+
+    content = {
+        # 'ok' if the request succeeded or 'error', with error information as in all other replies.
+        'status': 'ok',
+    }
+
+.. versionadded:: 5.5
+
+List subshell
+~~~~~~~~~~~~~
+
+In a kernel that supports subshells, this returns a list of the IDs of all subshells that exist
+in that kernel. In a kernel that does not support subshells an error is logged and no reply is sent.
+
+Message type: ``list_subshell_request``::
+
+    content = {
+    }
+
+Message type: ``list_subshell_reply``::
+
+    content = {
+        # 'ok' if the request succeeded or 'error', with error information as in all other replies.
+        'status': 'ok',
+
+        # A list of subshell IDs.
+        'subshell_id': [str]
+    }
 
 .. versionadded:: 5.5
 
@@ -1535,7 +1696,7 @@ Message type: ``debug_event``::
 
     content = {}
 
-The ``content`` dict follows the specification of the `Event` message from the `Debug Adapter Protocol (DAP) <https://microsoft.github.io/debug-adapter-protocol/>`_.
+The ``content`` dict follows the specification of the ``Event`` message from the `Debug Adapter Protocol (DAP) <https://microsoft.github.io/debug-adapter-protocol/>`_.
 
 .. versionadded:: 5.5
 
@@ -1695,6 +1856,10 @@ Changelog
 
 - Added ``debug_request/reply`` messages
 - Added ``debug_event`` message
+- Added ``supported_features`` in :ref:`kernel info <msging_kernel_info>` reply messages.
+- Deprecated ``debugger`` in :ref:`kernel info <msging_kernel_info>` reply messages as
+  replaced with ``supported_features``.
+- Added ``create_subshell``, ``delete_subshell`` and ``list_subshell`` messages.
 
 5.4
 ---
